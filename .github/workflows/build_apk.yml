@@ -1,0 +1,47 @@
+name: Build Android APK (Release)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Download Godot Engine & Templates
+        run: |
+          wget -q https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip
+          unzip -q Godot_v4.3-stable_linux.x86_64.zip
+          mv Godot_v4.3-stable_linux.x86_64 /usr/local/bin/godot
+          mkdir -p ~/.local/share/godot/export_templates/4.3.stable
+          wget -q https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_export_templates.tpz
+          unzip -q Godot_v4.3-stable_export_templates.tpz
+          mv templates/* ~/.local/share/godot/export_templates/4.3.stable/
+
+      - name: Generate Keystore
+        run: |
+          keytool -keyalg RSA -genkeypair -alias androidkey -keypass android -keystore release.keystore -storepass android -dname "CN=EmpireCommand, OU=Game, O=Commander, L=Global, S=Global, C=US" -validity 10000
+
+      - name: Build APK
+        run: |
+          mkdir -p build/
+          godot --headless --export-release "Android" build/EmpireCommand_v1.0.0.apk || true
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: EmpireCommand-POVA5-Release
+          path: build/*.apk
